@@ -144,8 +144,52 @@ document.getElementById("run").addEventListener("click", async () => {
     a2.textContent = "Download sections.csv";
     a2.style.display = "block";
 
+    // Add analysis button
+    const analyzeBtn = document.createElement("button");
+    analyzeBtn.textContent = "🔍 Analyze and Download Results";
+    analyzeBtn.style.marginTop = "10px";
+    analyzeBtn.style.padding = "8px 16px";
+    analyzeBtn.style.borderRadius = "6px";
+    analyzeBtn.style.border = "1px solid #333";
+    analyzeBtn.style.cursor = "pointer";
+    analyzeBtn.style.backgroundColor = "#f0f0f0";
+
+    analyzeBtn.onclick = async () => {
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = "⏳ Running analysis...";
+
+      try {
+        const analyzeRes = await fetch(`http://127.0.0.1:8000/analyze/${data.run_id}`, { method: "POST" });
+        if (!analyzeRes.ok) {
+          const txt = await analyzeRes.text();
+          log("❌ Analysis error:\n" + txt);
+          analyzeBtn.textContent = "❌ Analysis failed";
+          return;
+        }
+        const analyzeData = await analyzeRes.json();
+
+        log("✅ Analysis completed!");
+
+        const a3 = document.createElement("a");
+        a3.href = "http://127.0.0.1:8000/download/" + encodeURIComponent(analyzeData.analysis_zip);
+        a3.textContent = "📦 Download Complete Analysis (ZIP)";
+        a3.style.display = "block";
+        a3.style.marginTop = "10px";
+        a3.style.fontWeight = "bold";
+
+        linksEl.appendChild(a3);
+        analyzeBtn.style.display = "none";
+
+      } catch (e) {
+        log("❌ Analysis failed: " + String(e));
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = "🔍 Analyze and Download Results";
+      }
+    };
+
     linksEl.appendChild(a1);
     linksEl.appendChild(a2);
+    linksEl.appendChild(analyzeBtn);
 
   } catch (e) {
     log("❌ Δεν μπορώ να συνδεθώ στον server. Τρέχει το app;");

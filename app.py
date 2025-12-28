@@ -1,5 +1,7 @@
 import os
 import uuid
+import zipfile
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -9,7 +11,6 @@ from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-# χρησιμοποιεί τον δικό σας κώδικα
 from sections.io import load_las_points
 from sections.processing import auto_axis, compute_sections
 
@@ -46,6 +47,181 @@ def build_summary(df: pd.DataFrame) -> pd.DataFrame:
     summary["depth"] = summary["z_max"] - summary["z_min"]
     return summary
 
+
+# Analysis functions
+def create_cross_section_plots(df_sections, out_dir, point_size=1):
+    """Create individual cross-section plots"""
+    import matplotlib.pyplot as plt
+
+    section_ids = sorted(df_sections["section_id"].unique())
+    print(f"Found {len(section_ids)} sections: {section_ids[0]} to {section_ids[-1]}")
+
+    for sid in section_ids:
+        sub = df_sections[df_sections["section_id"] == sid]
+
+        plt.figure(figsize=(12, 8))
+        plt.scatter(sub["dist_off"], sub["z"], s=point_size, alpha=0.6, c='blue', edgecolors='none')
+        plt.xlabel("Distance from trench axis (m)")
+        plt.ylabel("Elevation (m)")
+        plt.title(f"Cross-section {sid}")
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        plt.savefig(out_dir / f"cross_section_{sid:02d}.png", dpi=150, bbox_inches='tight')
+        plt.close()
+
+    print(f"✅ Saved {len(section_ids)} cross-section plots")
+
+
+def create_summary_analysis_plots(df_summary, out_dir):
+    """Create summary analysis plots"""
+    import matplotlib.pyplot as plt
+
+    df = df_summary.sort_values("section_id")
+
+    # Wall distance profile
+    plt.figure(figsize=(15, 10))
+    plt.subplot(2, 1, 1)
+    plt.plot(df["section_id"], df["wall_distance"], 'b-', linewidth=2, marker='o', markersize=3)
+    plt.xlabel("Section ID")
+    plt.ylabel("Wall Distance (m)")
+    plt.title("Trench Wall Distance Along Length")
+    plt.grid(True, alpha=0.3)
+    plt.axhline(y=df["wall_distance"].mean(), color='r', linestyle='--', alpha=0.7,
+                label=f'Mean: {df["wall_distance"].mean():.3f}m')
+    plt.legend()
+
+    # Depth profile
+    plt.subplot(2, 1, 2)
+    plt.plot(df["section_id"], df["depth"], 'g-', linewidth=2, marker='s', markersize=3)
+    plt.xlabel("Section ID")
+    plt.ylabel("Depth (m)")
+    plt.title("Trench Depth Along Length")
+    plt.grid(True, alpha=0.3)
+    plt.axhline(y=df["depth"].mean(), color='r', linestyle='--', alpha=0.7,
+                label=f'Mean: {df["depth"].mean():.3f}m')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_dir / "trench_profile_analysis.png", dpi=150, bbox_inches='tight')
+    plt.close()
+
+    # Combined profile
+    fig, ax1 = plt.subplots(figsize=(15, 8))
+    ax1.plot(df["section_id"], df["wall_distance"], 'b-', linewidth=2, marker='o', markersize=4, label='Wall Distance')
+    ax1.set_xlabel("Section ID")
+    ax1.set_ylabel("Wall Distance (m)", color='b')
+    ax1.tick_params(axis='y', labelcolor='b')
+    ax1.grid(True, alpha=0.3)
+
+    ax2 = ax1.twinx()
+    ax2.plot(df["section_id"], df["depth"], 'g-', linewidth=2, marker='s', markersize=4, label='Depth')
+    ax2.set_ylabel("Depth (m)", color='g')
+    ax2.tick_params(axis='y', labelcolor='g')
+
+    plt.title("Combined Trench Profile Analysis")
+    fig.tight_layout()
+    plt.savefig(out_dir / "combined_profile_analysis.png", dpi=150, bbox_inches='tight')
+    plt.close()
+
+    # Statistics summary
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+
+    # Wall distance histogram
+    ax1.hist(df["wall_distance"], bins=20, alpha=0.7, color='blue', edgecolor='black')
+    ax1.set_xlabel("Wall Distance (m)")
+    ax1.set_ylabel("Frequency")
+    ax1.set_title("Wall Distance Distribution")
+    ax1.grid(True, alpha=0.3)
+
+    # Depth histogram
+    ax2.hist(df["depth"], bins=20, alpha=0.7, color='green', edgecolor='black')
+    ax2.set_xlabel("Depth (m)")
+    ax2.set_ylabel("Frequency")
+    ax2.set_title("Depth Distribution")
+    ax2.grid(True, alpha=0.3)
+
+    # Wall distance vs Depth scatter
+    ax3.scatter(df["wall_distance"], df["depth"], alpha=0.6, color='red', s=50)
+    ax3.set_xlabel("Wall Distance (m)")
+    ax3.set_ylabel("Depth (m)")
+    ax3.set_title("Wall Distance vs Depth Correlation")
+    ax3.grid(True, alpha=0.3)
+
+    # Section count bar chart
+    ax4.bar(df["section_id"], df["count"], alpha=0.7, color='orange', width=0.8)
+    ax4.set_xlabel("Section ID")
+    ax4.set_ylabel("Point Count")
+    ax4.set_title("Points per Section")
+    ax4.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(out_dir / "statistics_summary.png", dpi=150, bbox_inches='tight')
+    plt.close()
+
+    print("✅ Saved summary analysis plots")
+
+
+def generate_report(df_summary, out_dir):
+    """Generate text report"""
+    df = df_summary.sort_values("section_id")
+
+    with open(out_dir / "complete_analysis_report.txt", "w", encoding="utf-8") as f:
+        f.write("AEROMINE TRENCH ANALYSIS REPORT\n")
+        f.write("=" * 50 + "\n\n")
+
+        f.write("SUMMARY STATISTICS:\n")
+        f.write(f"Total sections: {len(df)}\n")
+        f.write(f"Section ID range: {df['section_id'].min()} to {df['section_id'].max()}\n\n")
+
+        f.write("WALL DISTANCE:\n")
+        f.write(f"  Mean: {df['wall_distance'].mean():.3f}m\n")
+        f.write(f"  Min:  {df['wall_distance'].min():.3f}m\n")
+        f.write(f"  Max:  {df['wall_distance'].max():.3f}m\n")
+        f.write(f"  Std:  {df['wall_distance'].std():.3f}m\n\n")
+
+        f.write("DEPTH:\n")
+        f.write(f"  Mean: {df['depth'].mean():.3f}m\n")
+        f.write(f"  Min:  {df['depth'].min():.3f}m\n")
+        f.write(f"  Max:  {df['depth'].max():.3f}m\n")
+        f.write(f"  Std:  {df['depth'].std():.3f}m\n\n")
+
+        f.write("VARIABILITY:\n")
+        f.write(f"  Wall distance CV: {df['wall_distance'].std() / df['wall_distance'].mean() * 100:.1f}%\n")
+        f.write(f"  Depth CV: {df['depth'].std() / df['depth'].mean() * 100:.1f}%\n\n")
+
+        f.write("SECTION DETAILS:\n")
+        f.write("-" * 80 + "\n")
+        f.write(f"{'Section':<8} {'Wall Dist':<10} {'Depth':<8} {'Points':<8} {'Z Range':<15}\n")
+        f.write("-" * 80 + "\n")
+
+        for _, row in df.iterrows():
+            z_range = f"{row['z_min']:.2f}-{row['z_max']:.2f}"
+            f.write(f"{row['section_id']:<8.0f} {row['wall_distance']:<10.3f} {row['depth']:<8.3f} {row['count']:<8} {z_range:<15}\n")
+
+    print("📄 Detailed report saved")
+
+
+def run_complete_analysis(sections_df, summary_df, run_dir):
+    """Run complete analysis and create ZIP file"""
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend
+
+    out_dir = run_dir / "complete_analysis"
+    out_dir.mkdir(exist_ok=True)
+
+    # Run analysis
+    create_cross_section_plots(sections_df, out_dir, point_size=1)
+    create_summary_analysis_plots(summary_df, out_dir)
+    generate_report(summary_df, out_dir)
+
+    # Create ZIP file
+    zip_path = run_dir / "complete_analysis.zip"
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for file_path in out_dir.rglob('*'):
+            if file_path.is_file():
+                zipf.write(file_path, file_path.relative_to(run_dir))
+
+    return zip_path
 
 def auto_edges_from_section(
     df_sec: pd.DataFrame,
@@ -200,6 +376,40 @@ async def run(
             "log": "\n".join(logs),
         }
     )
+
+
+@app.post("/analyze/{run_id}")
+async def analyze_run(run_id: str):
+    """Run complete analysis on existing CSV files from a run"""
+    run_dir = RUNS / run_id
+    if not run_dir.exists():
+        return JSONResponse({"ok": False, "error": "Run not found"}, status_code=404)
+
+    sections_csv = run_dir / "sections.csv"
+    summary_csv = run_dir / "sections_summary.csv"
+
+    if not sections_csv.exists() or not summary_csv.exists():
+        return JSONResponse({"ok": False, "error": "CSV files not found"}, status_code=404)
+
+    try:
+        # Load the CSV files
+        sections_df = pd.read_csv(sections_csv)
+        summary_df = pd.read_csv(summary_csv)
+
+        # Run analysis
+        zip_path = run_complete_analysis(sections_df, summary_df, run_dir)
+
+        return JSONResponse({
+            "ok": True,
+            "analysis_zip": f"{run_id}/complete_analysis.zip",
+            "message": "Analysis completed successfully"
+        })
+
+    except Exception as e:
+        return JSONResponse(
+            {"ok": False, "error": f"Analysis failed: {str(e)}"},
+            status_code=500
+        )
 
 
 @app.get("/download/{path:path}")
