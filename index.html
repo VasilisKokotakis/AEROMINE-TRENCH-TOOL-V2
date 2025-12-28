@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Aeromine Trench Runner</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 900px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-top: 16px; }
+    label { display: block; margin-top: 10px; }
+    input[type="number"] { width: 140px; }
+    select { width: 160px; }
+    button { margin-top: 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid #333; cursor: pointer; }
+    pre { background: #f7f7f7; padding: 12px; border-radius: 10px; overflow: auto; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .row > div { min-width: 220px; }
+    .hint { font-size: 12px; color: #555; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h2>Aeromine – Trench Sections Runner</h2>
+  <p>Ανέβασε ένα <b>.LAZ</b> ή <b>.LAS</b> και πάτα <b>Run</b>. Θα πάρεις τα CSV αποτελέσματα.</p>
+
+  <div class="card">
+    <label>Αρχείο LAZ/LAS:</label>
+    <input id="file" type="file" accept=".laz,.las" />
+
+    <div class="row">
+      <div>
+        <label>Spacing (m):</label>
+        <input id="spacing" type="number" step="0.01" value="0.10" />
+      </div>
+      <div>
+        <label>Prefilter half-width (m):</label>
+        <input id="prefilter" type="number" step="0.1" value="2.0" />
+      </div>
+      <div>
+        <label>Edge-lock (m):</label>
+        <input id="edgelock" type="number" step="0.01" value="0.05" />
+      </div>
+      <div>
+        <label>Auto-axis:</label>
+        <input id="autoaxis" type="checkbox" checked />
+      </div>
+    </div>
+
+    <hr style="margin:16px 0; border:none; border-top:1px solid #eee;" />
+
+    <div class="row">
+      <div>
+        <label>Clip mode:</label>
+        <select id="clip_mode">
+          <option value="fixed" selected>Fixed (± half-width)</option>
+          <option value="auto">Auto (corners)</option>
+        </select>
+        <div class="hint">Fixed = κόβει σταθερά. Auto = βρίσκει όρια από τις γωνίες.</div>
+      </div>
+
+      <div>
+        <label>Half-width (m):</label>
+        <input id="half_width" type="number" step="0.05" value="0.70" />
+        <div class="hint">Χρησιμοποιείται και ως fallback στο Auto.</div>
+      </div>
+
+      <div>
+        <label>Right trim (m):</label>
+        <input id="right_trim" type="number" step="0.01" value="0.00" />
+        <div class="hint">Επιπλέον κόψιμο από τη δεξιά πλευρά.</div>
+      </div>
+
+      <div>
+        <label>Slope threshold (auto):</label>
+        <input id="slope_thr" type="number" step="0.1" value="1.5" />
+      </div>
+    </div>
+
+    <button id="run">Run</button>
+
+    <div id="links" style="margin-top:14px;"></div>
+    <h4>Log</h4>
+    <pre id="log">Ready.</pre>
+  </div>
+
+<script>
+const logEl = document.getElementById("log");
+const linksEl = document.getElementById("links");
+
+function log(msg) {
+  logEl.textContent += "\n" + msg;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+document.getElementById("run").addEventListener("click", async () => {
+  linksEl.innerHTML = "";
+  logEl.textContent = "";
+  const file = document.getElementById("file").files[0];
+  if (!file) { log("❌ Διάλεξε πρώτα ένα .laz/.las"); return; }
+
+  const spacing = document.getElementById("spacing").value;
+  const prefilter = document.getElementById("prefilter").value;
+  const edgelock = document.getElementById("edgelock").value;
+  const autoaxis = document.getElementById("autoaxis").checked;
+
+  const clipMode = document.getElementById("clip_mode").value;
+  const halfWidth = document.getElementById("half_width").value;
+  const rightTrim = document.getElementById("right_trim").value;
+  const slopeThr = document.getElementById("slope_thr").value;
+
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("spacing", spacing);
+  // backend expects: prefilter_half_width
+  fd.append("prefilter_half_width", prefilter);
+  // backend expects: edgelock
+  fd.append("edgelock", edgelock);
+  fd.append("autoaxis", autoaxis ? "1" : "0");
+
+  // new params
+  fd.append("clip_mode", clipMode);
+  fd.append("half_width", halfWidth);
+  fd.append("right_trim", rightTrim);
+  fd.append("slope_thr", slopeThr);
+
+  log("⏳ Uploading & running…");
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/run", { method: "POST", body: fd });
+    if (!res.ok) {
+      const txt = await res.text();
+      log("❌ Server error:\n" + txt);
+      return;
+    }
+    const data = await res.json();
+    log("✅ Done.");
+    log(data.log || "");
+
+    const a1 = document.createElement("a");
+    a1.href = "http://127.0.0.1:8000/download/" + encodeURIComponent(data.summary_csv);
+    a1.textContent = "Download sections_summary.csv";
+    a1.style.display = "block";
+
+    const a2 = document.createElement("a");
+    a2.href = "http://127.0.0.1:8000/download/" + encodeURIComponent(data.full_csv);
+    a2.textContent = "Download sections.csv";
+    a2.style.display = "block";
+
+    linksEl.appendChild(a1);
+    linksEl.appendChild(a2);
+
+  } catch (e) {
+    log("❌ Δεν μπορώ να συνδεθώ στον server. Τρέχει το app;");
+    log(String(e));
+  }
+});
+</script>
+</body>
+</html>
