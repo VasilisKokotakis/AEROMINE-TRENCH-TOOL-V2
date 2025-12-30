@@ -6,3 +6,5 @@ laspy
 scikit-learn
 lazrs
 python-multipart
+matplotlib
+
