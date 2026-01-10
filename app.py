@@ -63,7 +63,7 @@ def build_summary(df: pd.DataFrame, spacing: float, depth_min: float) -> pd.Data
 
 
 # Analysis functions
-def create_cross_section_plots(df_sections, out_dir, point_size=1):
+def create_cross_section_plots(df_sections, out_dir, spacing, point_size=1):
     """Create individual cross-section plots"""
     import matplotlib.pyplot as plt
 
@@ -77,7 +77,8 @@ def create_cross_section_plots(df_sections, out_dir, point_size=1):
         plt.scatter(sub["dist_off"], sub["z"], s=point_size, alpha=0.6, c='blue', edgecolors='none')
         plt.xlabel("Distance from trench axis (m)")
         plt.ylabel("Elevation (m)")
-        plt.title(f"Cross-section {sid}")
+        length = sid * spacing
+        plt.title(f"Cross-section {sid} (Length: {length:.2f} m)")
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
 
@@ -248,7 +249,11 @@ def run_complete_analysis(sections_df, summary_df, run_dir):
     out_dir.mkdir(exist_ok=True)
 
     # Run analysis
-    create_cross_section_plots(sections_df, out_dir, point_size=1)
+    # Try to get spacing from summary_df if available, else fallback to 1.0
+    spacing = 1.0
+    if "spacing" in summary_df.columns and len(summary_df) > 0:
+        spacing = float(summary_df["spacing"].iloc[0])
+    create_cross_section_plots(sections_df, out_dir, spacing, point_size=1)
     create_summary_analysis_plots(summary_df, out_dir)
     generate_report(summary_df, out_dir)
 
