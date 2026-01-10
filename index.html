@@ -72,6 +72,12 @@
         <label>Slope threshold (auto):</label>
         <input id="slope_thr" type="number" step="0.1" value="1.5" />
       </div>
+
+      <div>
+        <label>Depth criterion min (m):</label>
+        <input id="depth_min" type="number" step="0.01" value="0.30" />
+        <div class="hint">Αν είναι >0, κάθε τομή παίρνει PASS/FAIL στο report.</div>
+      </div>
     </div>
 
     <button id="run">Run</button>
@@ -109,6 +115,7 @@ document.getElementById("run").addEventListener("click", async () => {
   const halfWidth = document.getElementById("half_width").value;
   const rightTrim = document.getElementById("right_trim").value;
   const slopeThr = document.getElementById("slope_thr").value;
+  const depthMin = document.getElementById("depth_min").value;
 
   const fd = new FormData();
   fd.append("file", file);
@@ -124,6 +131,7 @@ document.getElementById("run").addEventListener("click", async () => {
   fd.append("half_width", halfWidth);
   fd.append("right_trim", rightTrim);
   fd.append("slope_thr", slopeThr);
+  fd.append("depth_min", depthMin);
 
   log("⏳ Uploading & running…");
 

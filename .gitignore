@@ -3,6 +3,7 @@ results/
 runs/
 Images/
 plots_output/
+Data/
 
 # Python cache
 __pycache__/

@@ -29,7 +29,16 @@ app.add_middleware(
 )
 
 
-def build_summary(df: pd.DataFrame) -> pd.DataFrame:
+def build_summary(df: pd.DataFrame, spacing: float, depth_min: float) -> pd.DataFrame:
+    """Build per-section summary + derived metrics.
+
+    Adds:
+      - wall_distance (m)
+      - depth (m)
+      - depth_min (m) (criterion)
+      - depth_status (PASS/FAIL)
+      - spacing (m)
+    """
     summary = (
         df.groupby("section_id", as_index=False)
         .agg(
@@ -42,9 +51,14 @@ def build_summary(df: pd.DataFrame) -> pd.DataFrame:
     )
     # Filter out sections with too few points
     summary = summary[summary["count"] >= 1000].copy()
-    # Add wall distance and depth calculations
     summary["wall_distance"] = summary["x_max"] - summary["x_min"]
     summary["depth"] = summary["z_max"] - summary["z_min"]
+    summary["depth_min"] = float(depth_min)
+    summary["spacing"] = float(spacing)
+    if float(depth_min) > 0:
+        summary["depth_status"] = np.where(summary["depth"] >= float(depth_min), "PASS", "FAIL")
+    else:
+        summary["depth_status"] = "N/A"
     return summary
 
 
@@ -162,8 +176,24 @@ def create_summary_analysis_plots(df_summary, out_dir):
 
 
 def generate_report(df_summary, out_dir):
-    """Generate text report"""
-    df = df_summary.sort_values("section_id")
+    """Generate text report (with total length + depth PASS/FAIL)."""
+    df = df_summary.sort_values("section_id").copy()
+
+    # derive spacing & total length (best-effort)
+    spacing = float(df["spacing"].iloc[0]) if "spacing" in df.columns and len(df) else 0.0
+    sid_min = int(df["section_id"].min()) if len(df) else 0
+    sid_max = int(df["section_id"].max()) if len(df) else 0
+    total_length = (sid_max - sid_min + 1) * spacing if spacing > 0 else float('nan')
+
+    depth_min = float(df["depth_min"].iloc[0]) if "depth_min" in df.columns and len(df) else 0.0
+    if "depth_status" not in df.columns:
+        if depth_min > 0:
+            df["depth_status"] = np.where(df["depth"] >= depth_min, "PASS", "FAIL")
+        else:
+            df["depth_status"] = "N/A"
+
+    pass_count = int((df["depth_status"] == "PASS").sum()) if depth_min > 0 else 0
+    fail_count = int((df["depth_status"] == "FAIL").sum()) if depth_min > 0 else 0
 
     with open(out_dir / "complete_analysis_report.txt", "w", encoding="utf-8") as f:
         f.write("AEROMINE TRENCH ANALYSIS REPORT\n")
@@ -171,7 +201,16 @@ def generate_report(df_summary, out_dir):
 
         f.write("SUMMARY STATISTICS:\n")
         f.write(f"Total sections: {len(df)}\n")
-        f.write(f"Section ID range: {df['section_id'].min()} to {df['section_id'].max()}\n\n")
+        f.write(f"Section ID range: {sid_min} to {sid_max}\n")
+        if spacing > 0:
+            f.write(f"Spacing: {spacing:.3f} m\n")
+        if spacing > 0 and total_length == total_length:
+            f.write(f"Total trench length (approx): {total_length:.2f} m\n")
+        if depth_min > 0:
+            f.write(f"Depth criterion (min): {depth_min:.3f} m\n")
+            f.write(f"Depth PASS: {pass_count}\n")
+            f.write(f"Depth FAIL: {fail_count}\n")
+        f.write("\n")
 
         f.write("WALL DISTANCE:\n")
         f.write(f"  Mean: {df['wall_distance'].mean():.3f}m\n")
@@ -190,16 +229,15 @@ def generate_report(df_summary, out_dir):
         f.write(f"  Depth CV: {df['depth'].std() / df['depth'].mean() * 100:.1f}%\n\n")
 
         f.write("SECTION DETAILS:\n")
-        f.write("-" * 80 + "\n")
-        f.write(f"{'Section':<8} {'Wall Dist':<10} {'Depth':<8} {'Points':<8} {'Z Range':<15}\n")
-        f.write("-" * 80 + "\n")
+        f.write("-" * 95 + "\n")
+        f.write(f"{'Section':<8} {'Wall Dist':<10} {'Depth':<8} {'DepthOK':<8} {'Points':<8} {'Z Range':<15}\n")
+        f.write("-" * 95 + "\n")
 
         for _, row in df.iterrows():
             z_range = f"{row['z_min']:.2f}-{row['z_max']:.2f}"
-            f.write(f"{row['section_id']:<8.0f} {row['wall_distance']:<10.3f} {row['depth']:<8.3f} {row['count']:<8} {z_range:<15}\n")
+            f.write(f"{int(row['section_id']):<8d} {row['wall_distance']:<10.3f} {row['depth']:<8.3f} {str(row.get('depth_status','N/A')):<8} {int(row['count']):<8d} {z_range:<15}\n")
 
     print("📄 Detailed report saved")
-
 
 def run_complete_analysis(sections_df, summary_df, run_dir):
     """Run complete analysis and create ZIP file"""
@@ -286,6 +324,7 @@ async def run(
     half_width: float = Form(0.7),  # για fixed ή fallback
     right_trim: float = Form(0.0),  # επιπλέον κόψιμο από δεξιά
     slope_thr: float = Form(1.5),  # για auto edges
+    depth_min: float = Form(0.0),  # criterion: minimum acceptable depth (m)
     autoaxis: str = Form("1"),
 ):
     run_id = uuid.uuid4().hex[:10]
@@ -357,15 +396,32 @@ async def run(
     summary_csv = run_dir / "sections_summary.csv"
 
     df.to_csv(full_csv, index=False)
-    summary = build_summary(df)
+    summary = build_summary(df, spacing=spacing, depth_min=depth_min)
     summary.to_csv(summary_csv, index=False)
 
     # Add wall distance statistics to logs
     if len(summary) > 0:
+        # total trench length (approx)
+        total_length = (summary['section_id'].max() - summary['section_id'].min() + 1) * float(spacing)
+        logs.append(f"[length] total_length={total_length:.2f}m spacing={float(spacing):.3f}m")
+
         wall_distances = summary["wall_distance"]
         depths = summary["depth"]
         logs.append(f"[walls] distance_avg={wall_distances.mean():.3f}m min={wall_distances.min():.3f}m max={wall_distances.max():.3f}m")
         logs.append(f"[depth] avg={depths.mean():.3f}m min={depths.min():.3f}m max={depths.max():.3f}m")
+        # total length + pass/fail summary
+        sid_min = int(summary['section_id'].min())
+        sid_max = int(summary['section_id'].max())
+        total_length = (sid_max - sid_min + 1) * float(spacing)
+        logs.append(f"[length] total_length≈{total_length:.2f}m (spacing={float(spacing):.3f}m)")
+        if float(depth_min) > 0 and 'depth_status' in summary.columns:
+            pass_count = int((summary['depth_status']=='PASS').sum())
+            fail_count = int((summary['depth_status']=='FAIL').sum())
+            logs.append(f"[depth_check] criterion_min={float(depth_min):.3f}m PASS={pass_count} FAIL={fail_count}")
+        if 'depth_status' in summary.columns and (summary['depth_status'] != 'N/A').any():
+            pass_n = int((summary['depth_status'] == 'PASS').sum())
+            fail_n = int((summary['depth_status'] == 'FAIL').sum())
+            logs.append(f"[depth:criterion] depth_min={float(depth_min):.3f}m pass={pass_n} fail={fail_n}")
 
     return JSONResponse(
         {

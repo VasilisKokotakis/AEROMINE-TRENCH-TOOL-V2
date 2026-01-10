@@ -1,63 +1,53 @@
+from __future__ import annotations
+
+from typing import Tuple
+
 import numpy as np
 import pandas as pd
-from sklearn.decomposition import PCA
 
-def auto_axis(x, y):
-    xy = np.vstack((x, y)).T
-    pca = PCA(n_components=2)
-    pca.fit(xy)
-    v = pca.components_[0] / np.linalg.norm(pca.components_[0])
-    ctr = xy.mean(axis=0)
-    start = ctr - v * 10.0
-    end   = ctr + v * 10.0
-    print(f"[auto-axis] start=({start[0]}, {start[1]}), end=({end[0]}, {end[1]})")
-    return start, end
+def auto_axis(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Detect the main axis direction using PCA on (x,y)."""
+    pts = np.column_stack([x, y]).astype(float)
+    pts = pts[np.isfinite(pts).all(axis=1)]
+    if len(pts) < 2:
+        raise ValueError('Not enough points for axis detection')
+    c = pts.mean(axis=0)
+    P = pts - c
+    cov = (P.T @ P) / max(1, (len(P)-1))
+    w, v = np.linalg.eigh(cov)
+    d = v[:, np.argmax(w)]
+    d = d / (np.linalg.norm(d) + 1e-12)
+    t = P @ d
+    tmin, tmax = float(np.min(t)), float(np.max(t))
+    start = c + d * tmin
+    end = c + d * tmax
+    return start.astype(float), end.astype(float)
 
-def compute_sections(
-    x, y, z,
-    start, end,
-    spacing,
-    prefilter_half_width=None,
-    edge_lock_margin=0.0
-):
-    """
-    Sections πάνω στον άξονα start->end.
-    - prefilter_half_width: κρατά μόνο σημεία με |dist_off| <= half_width (π.χ. 2.0m)
-    - edge_lock_margin: κλειδώνει τα όρια κάθε τομής προς τα μέσα κατά margin (π.χ. 0.05m)
-    """
-    axis_vec = end - start
-    axis_vec = axis_vec / np.linalg.norm(axis_vec)
-
-    rel = np.vstack((x - start[0], y - start[1])).T
-    along = rel @ axis_vec
-    off = rel @ np.array([-axis_vec[1], axis_vec[0]])
-
-    section_id = np.floor(along / spacing).astype(int)
-
-    df = pd.DataFrame(
-        {"x": x, "y": y, "z": z,
-         "dist_along": along, "dist_off": off,
-         "section_id": section_id}
-    )
-
-    # (A) Prefilter: κράτα μόνο λωρίδα κοντά στο χαντάκι
-    if prefilter_half_width is not None:
-        hw = float(prefilter_half_width)
-        df = df[df["dist_off"].abs() <= hw].copy()
-
-    # (B) Edge-lock: κόψε outliers 5cm μέσα από min/max για κάθε section
-    m = float(edge_lock_margin or 0.0)
-    if m > 0.0 and len(df) > 0:
-        gmin = df.groupby("section_id")["dist_off"].transform("min")
-        gmax = df.groupby("section_id")["dist_off"].transform("max")
-
-        low = gmin + m
-        high = gmax - m
-
-        # Αν σε κάποιο section high<=low, μην το κόβεις (λίγα/κακά σημεία)
-        ok = high > low
-        mask = (~ok) | ((df["dist_off"] >= low) & (df["dist_off"] <= high))
-        df = df[mask].copy()
-
-    return df.reset_index(drop=True)
-
+def compute_sections(x: np.ndarray, y: np.ndarray, z: np.ndarray, start: np.ndarray, end: np.ndarray, spacing: float, prefilter_half_width: float = 0.5, edge_lock_margin: float = 0.05) -> pd.DataFrame:
+    """Project points to the trench axis and assign section ids."""
+    if spacing <= 0:
+        raise ValueError('spacing must be > 0')
+    p0 = np.asarray(start, dtype=float)
+    p1 = np.asarray(end, dtype=float)
+    u = p1 - p0
+    L = float(np.linalg.norm(u))
+    if not np.isfinite(L) or L <= 0:
+        raise ValueError('Invalid axis length')
+    u = u / L
+    v = np.array([-u[1], u[0]], dtype=float)
+    pts = np.column_stack([x, y]).astype(float)
+    p = pts - p0
+    s = p @ u
+    d = p @ v
+    # prefilter near the axis
+    m = np.isfinite(s) & np.isfinite(d) & np.isfinite(z)
+    if prefilter_half_width is not None and prefilter_half_width > 0:
+        m = m & (np.abs(d) <= (prefilter_half_width + float(edge_lock_margin)))
+    s = s[m]
+    d = d[m]
+    zf = np.asarray(z, dtype=float)[m]
+    # section ids (start at 0)
+    s0 = float(np.min(s))
+    sec_id = np.floor((s - s0) / float(spacing)).astype(int)
+    df = pd.DataFrame({'section_id': sec_id, 's': s, 'dist_off': d, 'z': zf})
+    return df
