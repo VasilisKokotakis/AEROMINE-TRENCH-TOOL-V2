@@ -82,7 +82,6 @@
   </div>
 
 <script>
-// ✅ FIXED: Auto-detect environment: local vs deployed
 const API_BASE = window.location.hostname === "localhost" 
   ? "http://127.0.0.1:8000" 
   : window.location.origin;
@@ -129,7 +128,6 @@ document.getElementById("run").addEventListener("click", async () => {
   log("⏳ Uploading & running…");
 
   try {
-    // ✅ FIXED: Uses API_BASE instead of hardcoded localhost
     const res = await fetch(API_BASE + "/run", { method: "POST", body: fd });
     if (!res.ok) {
       const txt = await res.text();
@@ -141,13 +139,11 @@ document.getElementById("run").addEventListener("click", async () => {
     log(data.log || "");
 
     const a1 = document.createElement("a");
-    // ✅ FIXED: Uses API_BASE instead of hardcoded localhost
     a1.href = API_BASE + "/download/" + encodeURIComponent(data.summary_csv);
     a1.textContent = "Download sections_summary.csv";
     a1.style.display = "block";
 
     const a2 = document.createElement("a");
-    // ✅ FIXED: Uses API_BASE instead of hardcoded localhost
     a2.href = API_BASE + "/download/" + encodeURIComponent(data.full_csv);
     a2.textContent = "Download sections.csv";
     a2.style.display = "block";
@@ -167,7 +163,6 @@ document.getElementById("run").addEventListener("click", async () => {
       analyzeBtn.textContent = "⏳ Running analysis...";
 
       try {
-        // ✅ FIXED: Uses API_BASE instead of hardcoded localhost
         const analyzeRes = await fetch(API_BASE + "/analyze/" + data.run_id, { method: "POST" });
         if (!analyzeRes.ok) {
           const txt = await analyzeRes.text();
@@ -180,7 +175,6 @@ document.getElementById("run").addEventListener("click", async () => {
         log("✅ Analysis completed!");
 
         const a3 = document.createElement("a");
-        // ✅ FIXED: Uses API_BASE instead of hardcoded localhost
         a3.href = API_BASE + "/download/" + encodeURIComponent(analyzeData.analysis_zip);
         a3.textContent = "📦 Download Complete Analysis (ZIP)";
         a3.style.display = "block";
