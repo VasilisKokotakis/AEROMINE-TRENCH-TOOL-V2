@@ -1,3 +1,17 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+AEROMINE Trench Analysis Tool - Web Application
+
+Copyright (c) 2026 AEROMINE
+All rights reserved.
+
+This software is licensed under the MIT License.
+
+Author: Vasilis Kokotakis
+Repository: https://github.com/VasilisKokotakis/AEROMINE-TRENCHE-TOOL-V2
+"""
+
 import os
 import uuid
 import zipfile

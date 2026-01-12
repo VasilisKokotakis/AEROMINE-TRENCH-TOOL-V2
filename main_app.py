@@ -1,3 +1,18 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+AEROMINE Trench Analysis Tool - Desktop Application
+
+Copyright (c) 2026 AEROMINE
+All rights reserved.
+
+This software is licensed under the MIT License.
+Removal or modification of the AEROMINE branding and copyright notice is prohibited.
+
+Author: Vasilis Kokotakis
+Repository: https://github.com/VasilisKokotakis/AEROMINE-TRENCHE-TOOL-V2
+"""
+
 import os
 import shutil
 from pathlib import Path
@@ -36,6 +51,26 @@ class AeromineApp(tk.Tk):
         style.configure("TEntry", padding=4)
 
     def _build_ui(self):
+        # Header with AEROMINE watermark
+        header_frame = ttk.Frame(self)
+        header_frame.pack(fill="x", padx=16, pady=(10, 5))
+        watermark_label = tk.Label(
+            header_frame,
+            text="AEROMINE",
+            font=("Arial", 28, "bold"),
+            fg="#4a90e2",
+            bg="#f7f9fc"
+        )
+        watermark_label.pack()
+        subtitle_label = tk.Label(
+            header_frame,
+            text="Trench Analysis Tool",
+            font=("Arial", 11),
+            fg="#666666",
+            bg="#f7f9fc"
+        )
+        subtitle_label.pack()
+
         # File selection
         file_frame = ttk.LabelFrame(self, text="1. Select LAS/LAZ File")
         file_frame.pack(fill="x", padx=16, pady=10)
