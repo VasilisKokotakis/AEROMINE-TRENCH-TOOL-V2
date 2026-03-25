@@ -1,4 +1,4 @@
-# AEROMINE-TRENCHE-TOOL-V2
+# AEROMINE-TRENCH-TOOL-V2
 
 A comprehensive application for processing and analyzing trench point cloud data from LAS/LAZ files. Extract cross-sections, calculate wall distances and depths, and generate detailed statistical analysis reports. Available as both a desktop GUI application and a web-based interface.
 
