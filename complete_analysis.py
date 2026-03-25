@@ -1,44 +1,39 @@
 #!/usr/bin/env python3
 
-import os
+import argparse
 import pathlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# Configuration - adjust these paths as needed
-RESULTS_DIR = "/home/vasilis/Downloads/AeromineRunner/results"
-SECTIONS_CSV = f"{RESULTS_DIR}/sections.csv"
-SUMMARY_CSV = f"{RESULTS_DIR}/sections_summary.csv"
-OUTPUT_DIR = f"{RESULTS_DIR}/complete_analysis"
 POINT_SIZE = 1
 
-def create_output_dir():
+def create_output_dir(output_dir):
     """Create output directory if it doesn't exist"""
-    out_dir = pathlib.Path(OUTPUT_DIR)
+    out_dir = pathlib.Path(output_dir)
     out_dir.mkdir(exist_ok=True)
     return out_dir
 
-def check_files():
+def check_files(sections_csv, summary_csv):
     """Check if required files exist"""
-    if not pathlib.Path(SECTIONS_CSV).exists():
-        raise FileNotFoundError(f"Δεν βρέθηκε το αρχείο: {SECTIONS_CSV}")
+    if not pathlib.Path(sections_csv).exists():
+        raise FileNotFoundError(f"File not found: {sections_csv}")
 
-    if not pathlib.Path(SUMMARY_CSV).exists():
-        raise FileNotFoundError(f"Δεν βρέθηκε το αρχείο: {SUMMARY_CSV}")
+    if not pathlib.Path(summary_csv).exists():
+        raise FileNotFoundError(f"File not found: {summary_csv}")
 
-def load_data():
+def load_data(results_dir, sections_csv, summary_csv):
     """Load both CSV files"""
-    print(f"Loading data from: {RESULTS_DIR}")
+    print(f"Loading data from: {results_dir}")
 
     # Load sections data for plotting
-    df_sections = pd.read_csv(SECTIONS_CSV)
+    df_sections = pd.read_csv(sections_csv)
     required_sections = ["dist_off", "z", "section_id"]
     missing_sections = [c for c in required_sections if c not in df_sections.columns]
     if missing_sections:
         raise ValueError(f"Sections CSV must contain columns: {required_sections}. Found: {df_sections.columns.tolist()}")
 
     # Load summary data for analysis
-    df_summary = pd.read_csv(SUMMARY_CSV)
+    df_summary = pd.read_csv(summary_csv)
     required_summary = {"section_id", "wall_distance", "depth"}
     missing_summary = [c for c in required_summary if c not in df_summary.columns]
     if missing_summary:
@@ -218,9 +213,9 @@ def generate_report(df_summary, out_dir):
         f.write("📊 COMPLETE TRENCH ANALYSIS REPORT\n")
         f.write("=" * 60 + "\n\n")
         f.write(f"Analysis Date: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"Input Directory: {RESULTS_DIR}\n")
-        f.write(f"Sections File: {SECTIONS_CSV}\n")
-        f.write(f"Summary File: {SUMMARY_CSV}\n\n")
+        f.write(f"Input Directory: {out_dir.parent.resolve()}\n")
+        f.write(f"Sections File: sections.csv\n")
+        f.write(f"Summary File: sections_summary.csv\n\n")
 
         f.write("📊 SUMMARY STATISTICS:\n")
         f.write(f"Total sections: {len(df)}\n")
@@ -258,24 +253,33 @@ def generate_report(df_summary, out_dir):
 
 def main():
     """Main function combining test.py and analyze_summary.py"""
+    parser = argparse.ArgumentParser(description="Complete trench analysis from sections CSV files")
+    parser.add_argument("results_dir", help="Directory containing sections.csv and sections_summary.csv")
+    args = parser.parse_args()
+
+    results_dir = pathlib.Path(args.results_dir)
+    sections_csv = results_dir / "sections.csv"
+    summary_csv = results_dir / "sections_summary.csv"
+    output_dir = results_dir / "complete_analysis"
+
     try:
-        print("🚀 Starting Complete Trench Analysis")
+        print("Starting Complete Trench Analysis")
         print("=" * 50)
 
         # Setup
-        out_dir = create_output_dir()
-        check_files()
+        out_dir = create_output_dir(output_dir)
+        check_files(sections_csv, summary_csv)
 
         # Load data
-        df_sections, df_summary = load_data()
+        df_sections, df_summary = load_data(results_dir, sections_csv, summary_csv)
 
         # Generate all outputs
         create_cross_section_plots(df_sections, out_dir)
         create_summary_analysis_plots(df_summary, out_dir)
         generate_report(df_summary, out_dir)
 
-        print("\n✅ COMPLETE ANALYSIS FINISHED!")
-        print(f"📁 All results saved in: {out_dir.resolve()}")
+        print("\nCOMPLETE ANALYSIS FINISHED!")
+        print(f"All results saved in: {out_dir.resolve()}")
         print("\n📂 Generated files:")
         print("  - Individual cross-section plots (section_XXXXX.jpg)")
         print("  - trench_profile_analysis.png (wall distance & depth profiles)")
@@ -284,7 +288,7 @@ def main():
         print("  - complete_analysis_report.txt (detailed text report)")
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         return 1
 
     return 0
