@@ -12,12 +12,15 @@ Author: Vasilis Kokotakis
 Repository: https://github.com/VasilisKokotakis/AEROMINE-TRENCHE-TOOL-V2
 """
 
+import logging
 import os
 import uuid
 import zipfile
 import tempfile
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
@@ -82,7 +85,7 @@ def create_cross_section_plots(df_sections, out_dir, spacing, point_size=1):
     import matplotlib.pyplot as plt
 
     section_ids = sorted(df_sections["section_id"].unique())
-    print(f"Found {len(section_ids)} sections: {section_ids[0]} to {section_ids[-1]}")
+    logger.info(f"Found {len(section_ids)} sections: {section_ids[0]} to {section_ids[-1]}")
 
     for sid in section_ids:
         sub = df_sections[df_sections["section_id"] == sid]
@@ -99,7 +102,7 @@ def create_cross_section_plots(df_sections, out_dir, spacing, point_size=1):
         plt.savefig(out_dir / f"cross_section_{sid:02d}.png", dpi=150, bbox_inches='tight')
         plt.close()
 
-    print(f"✅ Saved {len(section_ids)} cross-section plots")
+    logger.info(f"Saved {len(section_ids)} cross-section plots")
 
 
 def create_summary_analysis_plots(df_summary, out_dir):
@@ -187,7 +190,7 @@ def create_summary_analysis_plots(df_summary, out_dir):
     plt.savefig(out_dir / "statistics_summary.png", dpi=150, bbox_inches='tight')
     plt.close()
 
-    print("✅ Saved summary analysis plots")
+    logger.info("Saved summary analysis plots")
 
 
 def generate_report(df_summary, out_dir):
@@ -252,7 +255,7 @@ def generate_report(df_summary, out_dir):
             z_range = f"{row['z_min']:.2f}-{row['z_max']:.2f}"
             f.write(f"{int(row['section_id']):<8d} {row['wall_distance']:<10.3f} {row['depth']:<8.3f} {str(row.get('depth_status','N/A')):<8} {int(row['count']):<8d} {z_range:<15}\n")
 
-    print("📄 Detailed report saved")
+    logger.info("Detailed report saved")
 
 def run_complete_analysis(sections_df, summary_df, run_dir):
     """Run complete analysis and create ZIP file"""

@@ -1,8 +1,11 @@
 import json
+import logging
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def _decimate(df: pd.DataFrame, factor: int) -> pd.DataFrame:
@@ -17,7 +20,7 @@ def create_3d_html(df: pd.DataFrame, decimate_factor: int = 1) -> None:
     )
     fig3d.update_layout(title="3D trench preview", height=800)
     fig3d.write_html("sections_3d.html")
-    print(" -> Saved sections_3d.html")
+    logger.info("Saved sections_3d.html")
 
 
 def create_2d_html(df: pd.DataFrame) -> None:
@@ -276,4 +279,4 @@ def create_2d_html(df: pd.DataFrame) -> None:
 
     with open("sections_2d.html", "w", encoding="utf-8") as f:
         f.write(html_page)
-    print(" -> Saved sections_2d.html")
+    logger.info("Saved sections_2d.html")
