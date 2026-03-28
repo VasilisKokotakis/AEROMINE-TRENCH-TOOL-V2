@@ -104,7 +104,7 @@ document.getElementById("run").addEventListener("click", async () => {
   linksEl.innerHTML = "";
   logEl.textContent = "";
   const file = document.getElementById("file").files[0];
-  if (!file) { log("❌ Διάλεξε πρώτα ένα .laz/.las"); return; }
+  if (!file) { log("Error: select a .laz/.las file first"); return; }
 
   const spacing = document.getElementById("spacing").value;
   const prefilter = document.getElementById("prefilter").value;
@@ -133,17 +133,17 @@ document.getElementById("run").addEventListener("click", async () => {
   fd.append("slope_thr", slopeThr);
   fd.append("depth_min", depthMin);
 
-  log("⏳ Uploading & running…");
+  log("Uploading & running...");
 
   try {
     const res = await fetch(API_BASE + "/run", { method: "POST", body: fd });
     if (!res.ok) {
       const txt = await res.text();
-      log("❌ Server error:\n" + txt);
+      log("Error: server error:\n" + txt);
       return;
     }
     const data = await res.json();
-    log("✅ Done.");
+    log("Done.");
     log(data.log || "");
 
     const a1 = document.createElement("a");
@@ -158,7 +158,7 @@ document.getElementById("run").addEventListener("click", async () => {
 
     // Add analysis button
     const analyzeBtn = document.createElement("button");
-    analyzeBtn.textContent = "🔍 Analyze and Download Results";
+    analyzeBtn.textContent = "Analyze and Download Results";
     analyzeBtn.style.marginTop = "10px";
     analyzeBtn.style.padding = "8px 16px";
     analyzeBtn.style.borderRadius = "6px";
@@ -168,23 +168,23 @@ document.getElementById("run").addEventListener("click", async () => {
 
     analyzeBtn.onclick = async () => {
       analyzeBtn.disabled = true;
-      analyzeBtn.textContent = "⏳ Running analysis...";
+      analyzeBtn.textContent = "Running analysis...";
 
       try {
         const analyzeRes = await fetch(API_BASE + "/analyze/" + data.run_id, { method: "POST" });
         if (!analyzeRes.ok) {
           const txt = await analyzeRes.text();
-          log("❌ Analysis error:\n" + txt);
-          analyzeBtn.textContent = "❌ Analysis failed";
+          log("Error: analysis error:\n" + txt);
+          analyzeBtn.textContent = "Analysis failed";
           return;
         }
         const analyzeData = await analyzeRes.json();
 
-        log("✅ Analysis completed!");
+        log("Analysis completed!");
 
         const a3 = document.createElement("a");
         a3.href = API_BASE + "/download/" + encodeURIComponent(analyzeData.analysis_zip);
-        a3.textContent = "📦 Download Complete Analysis (ZIP)";
+        a3.textContent = "Download Complete Analysis (ZIP)";
         a3.style.display = "block";
         a3.style.marginTop = "10px";
         a3.style.fontWeight = "bold";
@@ -193,9 +193,9 @@ document.getElementById("run").addEventListener("click", async () => {
         analyzeBtn.style.display = "none";
 
       } catch (e) {
-        log("❌ Analysis failed: " + String(e));
+        log("Error: analysis failed: " + String(e));
         analyzeBtn.disabled = false;
-        analyzeBtn.textContent = "🔍 Analyze and Download Results";
+        analyzeBtn.textContent = "Analyze and Download Results";
       }
     };
 
@@ -204,7 +204,7 @@ document.getElementById("run").addEventListener("click", async () => {
     linksEl.appendChild(analyzeBtn);
 
   } catch (e) {
-    log("❌ Δεν μπορώ να συνδεθώ στον server. Τρέχει το app?");
+    log("Error: cannot connect to server. Is the app running?");
     log(String(e));
   }
 });

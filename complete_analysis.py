@@ -200,34 +200,34 @@ def generate_report(df_summary, out_dir):
     # Save detailed report to file
     report_file = out_dir / "complete_analysis_report.txt"
     with open(report_file, 'w', encoding='utf-8') as f:
-        f.write("📊 COMPLETE TRENCH ANALYSIS REPORT\n")
+        f.write("COMPLETE TRENCH ANALYSIS REPORT\n")
         f.write("=" * 60 + "\n\n")
         f.write(f"Analysis Date: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Input Directory: {out_dir.parent.resolve()}\n")
         f.write(f"Sections File: sections.csv\n")
         f.write(f"Summary File: sections_summary.csv\n\n")
 
-        f.write("📊 SUMMARY STATISTICS:\n")
+        f.write("SUMMARY STATISTICS:\n")
         f.write(f"Total sections: {len(df)}\n")
         f.write(f"Section ID range: {df['section_id'].min()} to {df['section_id'].max()}\n\n")
 
-        f.write("🏗️ WALL DISTANCE:\n")
+        f.write("WALL DISTANCE:\n")
         f.write(f"  Mean: {df['wall_distance'].mean():.3f}m\n")
         f.write(f"  Min:  {df['wall_distance'].min():.3f}m\n")
         f.write(f"  Max:  {df['wall_distance'].max():.3f}m\n")
         f.write(f"  Std:  {df['wall_distance'].std():.3f}m\n\n")
 
-        f.write("📏 DEPTH:\n")
+        f.write("DEPTH:\n")
         f.write(f"  Mean: {df['depth'].mean():.3f}m\n")
         f.write(f"  Min:  {df['depth'].min():.3f}m\n")
         f.write(f"  Max:  {df['depth'].max():.3f}m\n")
         f.write(f"  Std:  {df['depth'].std():.3f}m\n\n")
 
-        f.write("📈 VARIABILITY:\n")
+        f.write("VARIABILITY:\n")
         f.write(f"  Wall distance CV: {wall_cv:.1f}%\n")
         f.write(f"  Depth CV: {depth_cv:.1f}%\n\n")
 
-        f.write("📋 DETAILED SECTION DATA:\n")
+        f.write("DETAILED SECTION DATA:\n")
         f.write("-" * 90 + "\n")
         f.write(f"{'Section':<8} {'Wall Dist':<10} {'Depth':<8} {'Points':<8} {'Z_Range':<15}\n")
         f.write("-" * 90 + "\n")
