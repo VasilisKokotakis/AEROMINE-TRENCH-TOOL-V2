@@ -37,11 +37,11 @@ RUNS.mkdir(exist_ok=True)
 
 app = FastAPI()
 
-# CORS to allow index.html to communicate with the server
+# CORS restricted to localhost (this app runs locally)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -362,13 +362,21 @@ async def run(
     if errors:
         return JSONResponse(status_code=400, content={"error": "; ".join(errors)})
 
+    if not file.filename or Path(file.filename).suffix.lower() not in (".las", ".laz"):
+        return JSONResponse(status_code=400, content={"error": "Only .las and .laz files are accepted"})
+
+    contents = await file.read()
+    max_size = 2 * 1024 ** 3  # 2 GB
+    if len(contents) > max_size:
+        return JSONResponse(status_code=400, content={"error": "File exceeds 2 GB limit"})
+
     run_id = uuid.uuid4().hex[:10]
     run_dir = RUNS / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    in_path = run_dir / file.filename
+    in_path = run_dir / Path(file.filename).name
     with open(in_path, "wb") as f:
-        f.write(await file.read())
+        f.write(contents)
 
     logs: list[str] = []
     logs.append(f"[input] {in_path.name}")
