@@ -91,6 +91,22 @@ A comprehensive application for processing and analyzing trench point cloud data
    - `sections_summary.csv`: Statistical summary with depth status for each section
    - `complete_analysis.zip`: Comprehensive analysis package (plots + report)
 
+### Standalone Analysis Script
+
+After processing, you can also run the analysis from the command line:
+
+```bash
+python complete_analysis.py /path/to/results/directory
+```
+
+The directory must contain `sections.csv` and `sections_summary.csv`. Output is written to a `complete_analysis/` subfolder.
+
+### Running Tests
+
+```bash
+python -m pytest tests/
+```
+
 ## Processing Parameters
 
 | Parameter | Description | Default | Unit |
@@ -108,16 +124,19 @@ A comprehensive application for processing and analyzing trench point cloud data
 ## Project Structure
 
 ```
-AEROMINE-TRENCHE-TOOL-V2/
+AEROMINE-TRENCH-TOOL-V2/
 ├── main_app.py              # Desktop GUI application (Tkinter)
 ├── app.py                   # FastAPI web application
+├── complete_analysis.py     # Standalone CLI analysis script
 ├── index.html               # Web interface
 ├── sections/                # Processing modules
 │   ├── __init__.py
 │   ├── processing.py        # Core sectioning logic
 │   ├── io.py                # LAS file I/O
 │   └── visualization.py     # Plotting functions
-├── requirements.txt         # Python dependencies
+├── tests/
+│   └── test_processing.py   # Unit tests for core geometry
+├── requirements.txt         # Python dependencies (pinned)
 ├── runs/                    # Processed files and outputs
 └── .venv/                   # Virtual environment
 ```

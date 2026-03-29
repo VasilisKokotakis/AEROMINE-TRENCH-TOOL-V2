@@ -272,14 +272,17 @@ After excavation, one side of the trench collapsed slightly. Set right-trim to 0
 
 ### Step 4: Run Processing
 1. Click the **"Run"** button
-2. Watch the log window for progress messages:
+2. The button will disable and a status label will show the current step (e.g. "Loading points...", "Computing sections...")
+3. Watch the log window for progress messages:
    - File loading
    - Axis detection
    - Section computation
    - Clipping operations
    - CSV file generation
-3. Wait for "Processing complete" message
-4. **Two CSV files are now created** in your output folder
+4. Wait for "Processing complete" message — the button will re-enable
+5. **Two CSV files are now created** in your output folder
+
+> **Note:** If any parameter values are invalid (e.g. negative spacing), an error dialog will appear before processing starts.
 
 ### Step 5: Generate Analysis (Optional)
 1. Click **"Analyze & Create ZIP"** button
@@ -300,10 +303,10 @@ After excavation, one side of the trench collapsed slightly. Set right-trim to 0
 **What it contains:** Every individual point from the point cloud with its section assignment.
 
 **Columns:**
-- `x`, `y`, `z`: Original 3D coordinates of each point
 - `section_id`: Which cross-section this point belongs to (0, 1, 2, ...)
-- `dist_along`: Distance along the trench axis
+- `s`: Distance along the trench axis
 - `dist_off`: Distance perpendicular to the axis (positive = right, negative = left)
+- `z`: Elevation of the point
 
 **Size:** Can be very large (millions of rows for dense point clouds)
 
@@ -539,4 +542,4 @@ For questions, issues, or feature requests:
 
 ---
 
-*Last updated: January 2026*
+*Last updated: March 2026*
