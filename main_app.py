@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sections.io import load_las_points
-from sections.processing import auto_axis, compute_sections
+from sections.processing import auto_axis, compute_sections, validate_params
 from app import build_summary, create_cross_section_plots, create_summary_analysis_plots, generate_report, run_complete_analysis
 import tkinter as tk
 import tkinter.font as tkfont
@@ -149,6 +149,20 @@ class AeromineApp(tk.Tk):
         depthmin = self.vars["depthmin_var"].get()
         autoaxis = self.autoaxis_var.get()
         clipmode = self.clipmode_var.get()
+        # Validate parameters
+        errors = validate_params(
+            spacing=spacing,
+            prefilter_half_width=prefilter,
+            edgelock=edgelock,
+            half_width=halfwidth,
+            right_trim=righttrim,
+            slope_thr=slopethr,
+            depth_min=depthmin,
+            clip_mode=clipmode,
+        )
+        if errors:
+            messagebox.showerror("Invalid parameters", "\n".join(errors))
+            return
         # Prepare output run dir
         run_id = os.path.splitext(os.path.basename(file_path))[0] + "_run"
         run_dir = Path(out_dir) / run_id

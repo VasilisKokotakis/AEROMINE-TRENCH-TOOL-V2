@@ -29,7 +29,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from sections.io import load_las_points
-from sections.processing import auto_axis, compute_sections
+from sections.processing import auto_axis, compute_sections, validate_params
 
 BASE = Path(__file__).parent.resolve()
 RUNS = BASE / "runs"
@@ -349,6 +349,19 @@ async def run(
     depth_min: float = Form(0.0),  # criterion: minimum acceptable depth (m)
     autoaxis: str = Form("1"),
 ):
+    errors = validate_params(
+        spacing=spacing,
+        prefilter_half_width=prefilter_half_width,
+        edgelock=edgelock,
+        half_width=half_width,
+        right_trim=right_trim,
+        slope_thr=slope_thr,
+        depth_min=depth_min,
+        clip_mode=clip_mode,
+    )
+    if errors:
+        return JSONResponse(status_code=400, content={"error": "; ".join(errors)})
+
     run_id = uuid.uuid4().hex[:10]
     run_dir = RUNS / run_id
     run_dir.mkdir(parents=True, exist_ok=True)

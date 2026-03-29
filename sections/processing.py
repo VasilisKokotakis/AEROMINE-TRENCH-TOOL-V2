@@ -5,6 +5,37 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
+def validate_params(
+    spacing: float,
+    prefilter_half_width: float,
+    edgelock: float,
+    half_width: float,
+    right_trim: float,
+    slope_thr: float,
+    depth_min: float,
+    clip_mode: str,
+) -> list[str]:
+    """Validate processing parameters. Returns a list of error messages (empty = valid)."""
+    errors = []
+    if spacing <= 0:
+        errors.append("Spacing must be > 0")
+    if prefilter_half_width <= 0:
+        errors.append("Prefilter half-width must be > 0")
+    if edgelock < 0:
+        errors.append("Edge-lock must be >= 0")
+    if half_width <= 0:
+        errors.append("Half-width must be > 0")
+    if right_trim < 0:
+        errors.append("Right trim must be >= 0")
+    if slope_thr <= 0:
+        errors.append("Slope threshold must be > 0")
+    if depth_min < 0:
+        errors.append("Depth min must be >= 0")
+    if clip_mode not in ("fixed", "auto"):
+        errors.append("Clip mode must be 'fixed' or 'auto'")
+    return errors
+
+
 def auto_axis(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Detect the main axis direction using PCA on (x,y)."""
     pts = np.column_stack([x, y]).astype(float)
