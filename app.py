@@ -35,6 +35,9 @@ BASE = Path(__file__).parent.resolve()
 RUNS = BASE / "runs"
 RUNS.mkdir(exist_ok=True)
 
+MIN_POINTS_PER_SECTION = 1000  # sections with fewer points are excluded from summary
+HISTOGRAM_BINS = 20             # number of bins in analysis histograms
+
 app = FastAPI()
 
 # CORS restricted to localhost (this app runs locally)
@@ -67,7 +70,7 @@ def build_summary(df: pd.DataFrame, spacing: float, depth_min: float) -> pd.Data
         )
     )
     # Filter out sections with too few points
-    summary = summary[summary["count"] >= 1000].copy()
+    summary = summary[summary["count"] >= MIN_POINTS_PER_SECTION].copy()
     summary["wall_distance"] = summary["x_max"] - summary["x_min"]
     summary["depth"] = summary["z_max"] - summary["z_min"]
     summary["depth_min"] = float(depth_min)
@@ -159,14 +162,14 @@ def create_summary_analysis_plots(df_summary, out_dir):
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
 
     # Wall distance histogram
-    ax1.hist(df["wall_distance"], bins=20, alpha=0.7, color='blue', edgecolor='black')
+    ax1.hist(df["wall_distance"], bins=HISTOGRAM_BINS, alpha=0.7, color='blue', edgecolor='black')
     ax1.set_xlabel("Wall Distance (m)")
     ax1.set_ylabel("Frequency")
     ax1.set_title("Wall Distance Distribution")
     ax1.grid(True, alpha=0.3)
 
     # Depth histogram
-    ax2.hist(df["depth"], bins=20, alpha=0.7, color='green', edgecolor='black')
+    ax2.hist(df["depth"], bins=HISTOGRAM_BINS, alpha=0.7, color='green', edgecolor='black')
     ax2.set_xlabel("Depth (m)")
     ax2.set_ylabel("Frequency")
     ax2.set_title("Depth Distribution")

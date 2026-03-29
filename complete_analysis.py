@@ -10,6 +10,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 POINT_SIZE = 1
+HISTOGRAM_BINS = 20  # number of bins in analysis histograms
 
 def create_output_dir(output_dir):
     """Create output directory if it doesn't exist"""
@@ -140,7 +141,7 @@ def create_summary_analysis_plots(df_summary, out_dir):
 
     # Wall Distance Stats
     plt.subplot(2, 2, 1)
-    plt.hist(df["wall_distance"], bins=20, alpha=0.7, color='blue', edgecolor='black')
+    plt.hist(df["wall_distance"], bins=HISTOGRAM_BINS, alpha=0.7, color='blue', edgecolor='black')
     plt.axvline(df["wall_distance"].mean(), color='red', linestyle='--', linewidth=2,
                 label=f'Mean: {df["wall_distance"].mean():.3f}m')
     plt.xlabel("Wall Distance (m)")
@@ -151,7 +152,7 @@ def create_summary_analysis_plots(df_summary, out_dir):
 
     # Depth Stats
     plt.subplot(2, 2, 2)
-    plt.hist(df["depth"], bins=20, alpha=0.7, color='green', edgecolor='black')
+    plt.hist(df["depth"], bins=HISTOGRAM_BINS, alpha=0.7, color='green', edgecolor='black')
     plt.axvline(df["depth"].mean(), color='red', linestyle='--', linewidth=2,
                 label=f'Mean: {df["depth"].mean():.3f}m')
     plt.xlabel("Depth (m)")
