@@ -15,6 +15,7 @@ Repository: https://github.com/VasilisKokotakis/AEROMINE-TRENCHE-TOOL-V2
 
 import os
 import shutil
+import threading
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -111,9 +112,15 @@ class AeromineApp(tk.Tk):
         # Run and Analyze buttons
         btn_frame = ttk.Frame(self)
         btn_frame.pack(pady=10)
-        ttk.Button(btn_frame, text="Run", command=self.run_processing).pack(side="left", padx=10)
-        ttk.Button(btn_frame, text="Analyze & Create ZIP", command=self.run_analysis).pack(side="left", padx=10)
+        self.btn_run = ttk.Button(btn_frame, text="Run", command=self.run_processing)
+        self.btn_run.pack(side="left", padx=10)
+        self.btn_analyze = ttk.Button(btn_frame, text="Analyze & Create ZIP", command=self.run_analysis)
+        self.btn_analyze.pack(side="left", padx=10)
         ttk.Button(btn_frame, text="Open Output Folder", command=self.open_output_folder).pack(side="left", padx=10)
+
+        # Status label
+        self.status_var = tk.StringVar(value="")
+        ttk.Label(self, textvariable=self.status_var, foreground="#4a90e2").pack(pady=(0, 4))
 
         # Log/output
         log_frame = ttk.LabelFrame(self, text="Log")
@@ -132,6 +139,12 @@ class AeromineApp(tk.Tk):
         if dir_path:
             self.output_dir.set(dir_path)
             self.log(f"Output directory: {dir_path}")
+
+    def _set_busy(self, busy: bool, status: str = ""):
+        state = "disabled" if busy else "normal"
+        self.btn_run.config(state=state)
+        self.btn_analyze.config(state=state)
+        self.status_var.set(status)
 
     def run_processing(self):
         file_path = self.selected_file.get()
@@ -163,63 +176,80 @@ class AeromineApp(tk.Tk):
         if errors:
             messagebox.showerror("Invalid parameters", "\n".join(errors))
             return
-        # Prepare output run dir
-        run_id = os.path.splitext(os.path.basename(file_path))[0] + "_run"
-        run_dir = Path(out_dir) / run_id
-        if run_dir.exists():
-            shutil.rmtree(run_dir)
-        run_dir.mkdir(parents=True, exist_ok=True)
-        # Copy input file
-        in_path = run_dir / os.path.basename(file_path)
-        shutil.copy(file_path, in_path)
-        self.log(f"[input] {in_path.name}")
-        # Load points
-        x, y, z = load_las_points(str(in_path))
-        self.log(f"[loaded] points={len(x):,}")
-        # Axis
-        if autoaxis:
-            start, end = auto_axis(x, y)
-            self.log("[axis] auto (PCA)")
-        else:
-            start = np.array([x.min(), y.min()], dtype=float)
-            end = np.array([x.max(), y.max()], dtype=float)
-            self.log("[axis] bbox diagonal")
-        # Compute sections
-        df = compute_sections(
-            x, y, z, start, end, spacing,
-            prefilter_half_width=prefilter,
-            edge_lock_margin=edgelock,
-        )
-        self.log(f"[sections] rows={len(df):,} sections={df['section_id'].nunique()}")
-        # Clip
-        if clipmode == "fixed":
-            df = df[df["dist_off"].between(-halfwidth, halfwidth - righttrim)].copy()
-            self.log(f"[clip:fixed] half_width={halfwidth} right_trim={righttrim}")
-        else:
-            from app import auto_edges_from_section
-            out = []
-            fail = 0
-            for sid, g in df.groupby("section_id"):
-                le, re = auto_edges_from_section(g, slope_thr=slopethr)
-                if le is None or re is None or le >= re:
-                    fail += 1
-                    gg = g[g["dist_off"].between(-halfwidth, halfwidth)].copy()
-                    out.append(gg)
-                    continue
-                gg = g[(g["dist_off"] >= le) & (g["dist_off"] <= re)].copy()
-                out.append(gg)
-            df = pd.concat(out, ignore_index=True) if out else df.iloc[0:0].copy()
-            self.log(f"[clip:auto] slope_thr={slopethr} failed_sections={fail}")
-            if len(df) > 0:
-                self.log(f"[clip:auto] dist_off=[{df['dist_off'].min():.3f},{df['dist_off'].max():.3f}]")
-        # Save outputs
-        full_csv = run_dir / "sections.csv"
-        summary_csv = run_dir / "sections_summary.csv"
-        df.to_csv(full_csv, index=False)
-        summary = build_summary(df, spacing=spacing, depth_min=depthmin)
-        summary.to_csv(summary_csv, index=False)
-        self.log(f"[output] sections.csv, sections_summary.csv saved in {run_dir}")
-        self.log("Processing complete. You can now run analysis.")
+
+        self._set_busy(True, "Processing...")
+
+        def _worker():
+            try:
+                # Prepare output run dir
+                run_id = os.path.splitext(os.path.basename(file_path))[0] + "_run"
+                run_dir = Path(out_dir) / run_id
+                if run_dir.exists():
+                    shutil.rmtree(run_dir)
+                run_dir.mkdir(parents=True, exist_ok=True)
+                # Copy input file
+                in_path = run_dir / os.path.basename(file_path)
+                shutil.copy(file_path, in_path)
+                self.after(0, self.log, f"[input] {in_path.name}")
+                # Load points
+                self.after(0, self.status_var.set, "Loading points...")
+                x, y, z = load_las_points(str(in_path))
+                self.after(0, self.log, f"[loaded] points={len(x):,}")
+                # Axis
+                self.after(0, self.status_var.set, "Detecting axis...")
+                if autoaxis:
+                    start, end = auto_axis(x, y)
+                    self.after(0, self.log, "[axis] auto (PCA)")
+                else:
+                    start = np.array([x.min(), y.min()], dtype=float)
+                    end = np.array([x.max(), y.max()], dtype=float)
+                    self.after(0, self.log, "[axis] bbox diagonal")
+                # Compute sections
+                self.after(0, self.status_var.set, "Computing sections...")
+                df = compute_sections(
+                    x, y, z, start, end, spacing,
+                    prefilter_half_width=prefilter,
+                    edge_lock_margin=edgelock,
+                )
+                self.after(0, self.log, f"[sections] rows={len(df):,} sections={df['section_id'].nunique()}")
+                # Clip
+                self.after(0, self.status_var.set, "Clipping sections...")
+                if clipmode == "fixed":
+                    df = df[df["dist_off"].between(-halfwidth, halfwidth - righttrim)].copy()
+                    self.after(0, self.log, f"[clip:fixed] half_width={halfwidth} right_trim={righttrim}")
+                else:
+                    from app import auto_edges_from_section
+                    out = []
+                    fail = 0
+                    for sid, g in df.groupby("section_id"):
+                        le, re = auto_edges_from_section(g, slope_thr=slopethr)
+                        if le is None or re is None or le >= re:
+                            fail += 1
+                            gg = g[g["dist_off"].between(-halfwidth, halfwidth)].copy()
+                            out.append(gg)
+                            continue
+                        gg = g[(g["dist_off"] >= le) & (g["dist_off"] <= re)].copy()
+                        out.append(gg)
+                    df = pd.concat(out, ignore_index=True) if out else df.iloc[0:0].copy()
+                    self.after(0, self.log, f"[clip:auto] slope_thr={slopethr} failed_sections={fail}")
+                    if len(df) > 0:
+                        self.after(0, self.log, f"[clip:auto] dist_off=[{df['dist_off'].min():.3f},{df['dist_off'].max():.3f}]")
+                # Save outputs
+                self.after(0, self.status_var.set, "Saving outputs...")
+                full_csv = run_dir / "sections.csv"
+                summary_csv = run_dir / "sections_summary.csv"
+                df.to_csv(full_csv, index=False)
+                summary = build_summary(df, spacing=spacing, depth_min=depthmin)
+                summary.to_csv(summary_csv, index=False)
+                self.after(0, self.log, f"[output] sections.csv, sections_summary.csv saved in {run_dir}")
+                self.after(0, self.log, "Processing complete. You can now run analysis.")
+            except Exception as e:
+                self.after(0, self.log, f"[error] {e}")
+                self.after(0, messagebox.showerror, "Error", str(e))
+            finally:
+                self.after(0, self._set_busy, False, "")
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def run_analysis(self):
         out_dir = self.output_dir.get()
@@ -234,11 +264,24 @@ class AeromineApp(tk.Tk):
         if not sections_csv.exists() or not summary_csv.exists():
             messagebox.showerror("Error", "Please run processing first.")
             return
-        sections_df = pd.read_csv(sections_csv)
-        summary_df = pd.read_csv(summary_csv)
-        zip_path = run_complete_analysis(sections_df, summary_df, run_dir)
-        self.log(f"[analysis] Complete analysis ZIP created: {zip_path}")
-        messagebox.showinfo("Analysis Complete", f"Analysis ZIP created:\n{zip_path}")
+
+        self._set_busy(True, "Generating analysis...")
+
+        def _worker():
+            try:
+                sections_df = pd.read_csv(sections_csv)
+                summary_df = pd.read_csv(summary_csv)
+                self.after(0, self.status_var.set, "Creating plots...")
+                zip_path = run_complete_analysis(sections_df, summary_df, run_dir)
+                self.after(0, self.log, f"[analysis] Complete analysis ZIP created: {zip_path}")
+                self.after(0, messagebox.showinfo, "Analysis Complete", f"Analysis ZIP created:\n{zip_path}")
+            except Exception as e:
+                self.after(0, self.log, f"[error] {e}")
+                self.after(0, messagebox.showerror, "Error", str(e))
+            finally:
+                self.after(0, self._set_busy, False, "")
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def open_output_folder(self):
         out_dir = self.output_dir.get()
