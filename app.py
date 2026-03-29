@@ -37,7 +37,7 @@ RUNS.mkdir(exist_ok=True)
 
 app = FastAPI()
 
-# CORS για να μπορεί το index.html να μιλάει στον server
+# CORS to allow index.html to communicate with the server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -342,10 +342,10 @@ async def run(
     spacing: float = Form(0.10),
     prefilter_half_width: float = Form(2.0),
     edgelock: float = Form(0.05),
-    clip_mode: str = Form("fixed"),  # "fixed" ή "auto"
-    half_width: float = Form(0.7),  # για fixed ή fallback
-    right_trim: float = Form(0.0),  # επιπλέον κόψιμο από δεξιά
-    slope_thr: float = Form(1.5),  # για auto edges
+    clip_mode: str = Form("fixed"),  # "fixed" or "auto"
+    half_width: float = Form(0.7),  # for fixed mode or fallback
+    right_trim: float = Form(0.0),  # additional trimming from the right
+    slope_thr: float = Form(1.5),  # for auto edge detection
     depth_min: float = Form(0.0),  # criterion: minimum acceptable depth (m)
     autoaxis: str = Form("1"),
 ):
@@ -435,7 +435,7 @@ async def run(
         sid_min = int(summary['section_id'].min())
         sid_max = int(summary['section_id'].max())
         total_length = (sid_max - sid_min + 1) * float(spacing)
-        logs.append(f"[length] total_length≈{total_length:.2f}m (spacing={float(spacing):.3f}m)")
+        logs.append(f"[length] total_length~{total_length:.2f}m (spacing={float(spacing):.3f}m)")
         if float(depth_min) > 0 and 'depth_status' in summary.columns:
             pass_count = int((summary['depth_status']=='PASS').sum())
             fail_count = int((summary['depth_status']=='FAIL').sum())

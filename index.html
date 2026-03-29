@@ -19,10 +19,10 @@
 </head>
 <body>
   <h2>Aeromine – Trench Sections Runner</h2>
-  <p>Ανέβασε ένα <b>.LAZ</b> ή <b>.LAS</b> και πάτα <b>Run</b>. Θα πάρεις τα CSV αποτελέσματα.</p>
+  <p>Upload a <b>.LAZ</b> or <b>.LAS</b> file and click <b>Run</b> to get the CSV results.</p>
 
   <div class="card">
-    <label>Αρχείο LAZ/LAS:</label>
+    <label>LAZ/LAS file:</label>
     <input id="file" type="file" accept=".laz,.las" />
 
     <div class="row">
@@ -53,19 +53,19 @@
           <option value="fixed" selected>Fixed (± half-width)</option>
           <option value="auto">Auto (corners)</option>
         </select>
-        <div class="hint">Fixed = κόβει σταθερά. Auto = βρίσκει όρια από τις γωνίες.</div>
+        <div class="hint">Fixed = clips at constant half-width. Auto = detects edges from slope.</div>
       </div>
 
       <div>
         <label>Half-width (m):</label>
         <input id="half_width" type="number" step="0.05" value="0.70" />
-        <div class="hint">Χρησιμοποιείται και ως fallback στο Auto.</div>
+        <div class="hint">Also used as fallback in Auto mode.</div>
       </div>
 
       <div>
         <label>Right trim (m):</label>
         <input id="right_trim" type="number" step="0.01" value="0.00" />
-        <div class="hint">Επιπλέον κόψιμο από τη δεξιά πλευρά.</div>
+        <div class="hint">Additional trimming from the right side.</div>
       </div>
 
       <div>
@@ -76,7 +76,7 @@
       <div>
         <label>Depth criterion min (m):</label>
         <input id="depth_min" type="number" step="0.01" value="0.30" />
-        <div class="hint">Αν είναι >0, κάθε τομή παίρνει PASS/FAIL στο report.</div>
+        <div class="hint">If >0, each section gets a PASS/FAIL status in the report.</div>
       </div>
     </div>
 

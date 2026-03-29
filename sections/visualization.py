@@ -24,14 +24,14 @@ def create_3d_html(df: pd.DataFrame, decimate_factor: int = 1) -> None:
 
 
 def create_2d_html(df: pd.DataFrame) -> None:
-    # Ελαφρύ decimate για 2D
+    # Light decimation for 2D
     df2d = _decimate(df, 50)
 
     section_ids = sorted(df2d["section_id"].unique().tolist())
     if not section_ids:
         return
 
-    # Προετοιμασία δεδομένων ανά τομή για JS
+    # Prepare per-section data for JS
     sections_js = []
     for sid in section_ids:
         sub = df2d[df2d["section_id"] == sid]
@@ -49,7 +49,7 @@ def create_2d_html(df: pd.DataFrame) -> None:
             }
         )
 
-    # Αρχική τομή
+    # Initial section
     first_sid = section_ids[0]
     first = [s for s in sections_js if s["id"] == first_sid][0]
 
@@ -61,11 +61,11 @@ def create_2d_html(df: pd.DataFrame) -> None:
         name=f"Section {first_sid}",
     )
 
-    # Σχήματα:
-    # 0: οριζόντια Zmin (xref:x, yref:y)
-    # 1: οριζόντια Zmax (xref:x, yref:y)
-    # 2: κατακόρυφη Xmin (xref:x, yref:paper)
-    # 3: κατακόρυφη Xmax (xref:x, yref:paper)
+    # Shapes:
+    # 0: horizontal Zmin (xref:x, yref:y)
+    # 1: horizontal Zmax (xref:x, yref:y)
+    # 2: vertical Xmin (xref:x, yref:paper)
+    # 3: vertical Xmax (xref:x, yref:paper)
     shapes = [
         dict(
             type="line",
@@ -109,7 +109,7 @@ def create_2d_html(df: pd.DataFrame) -> None:
         ),
     ]
 
-    # Σχολιασμοί: 0 Zmin, 1 Zmax, 2 Xmin, 3 Xmax
+    # Annotations: 0 Zmin, 1 Zmax, 2 Xmin, 3 Xmax
     annotations = [
         dict(
             x=first["x_max"],
@@ -164,7 +164,7 @@ def create_2d_html(df: pd.DataFrame) -> None:
     )
     sections_json = json.dumps(sections_js)
 
-    # Τελική HTML με ΑΜΕΣΗ αλλαγή τομής στο dropdown (input/change)
+    # Final HTML with immediate section change on dropdown (input/change)
     html_page = (
         "<!doctype html>\n<html>\n<head>\n<meta charset='utf-8'>\n<title>sections_2d</title>\n"
         "<style>\n"
@@ -207,7 +207,7 @@ def create_2d_html(df: pd.DataFrame) -> None:
         "const applyBtn = document.getElementById('applyBtn');\n"
         "const resetBtn = document.getElementById('resetBtn');\n"
         "const metricsInfo = document.getElementById('metricsInfo');\n"
-        "let store = {}; // per-section overrides, π.χ. store[idx] = { zmin, zmax, xmin, xmax }\n"
+        "let store = {}; // per-section overrides, e.g. store[idx] = { zmin, zmax, xmin, xmax }\n"
         "\n"
         "function setSelectOptions(){\n"
         "  sections.forEach((s,i)=>{\n"
@@ -219,14 +219,14 @@ def create_2d_html(df: pd.DataFrame) -> None:
         "\n"
         "function loadSection(idx){\n"
         "  const s = sections[idx];\n"
-        "  // Ενημέρωση σημείων ΑΜΕΣΑ\n"
+        "  // Update points immediately\n"
         "  Plotly.restyle(gd, { 'x': [s.xs], 'y': [s.zs] }, [0]);\n"
-        "  // Ανεξάρτητες τιμές Z και X (με override όπου υπάρχει)\n"
+        "  // Independent Z and X values (with override where present)\n"
         "  const zmin = (store[idx] && Number.isFinite(store[idx].zmin)) ? store[idx].zmin : s.zmin;\n"
         "  const zmax = (store[idx] && Number.isFinite(store[idx].zmax)) ? store[idx].zmax : s.zmax;\n"
         "  const xmin = (store[idx] && Number.isFinite(store[idx].xmin)) ? store[idx].xmin : s.x_min;\n"
         "  const xmax = (store[idx] && Number.isFinite(store[idx].xmax)) ? store[idx].xmax : s.x_max;\n"
-        "  // Relayout μόνο των αντίστοιχων στοιχείων (χωρίς διασταυρούμενη επίδραση)\n"
+        "  // Relayout only the corresponding elements (no cross-axis interference)\n"
         "  const rel = {\n"
         "    'shapes[0].x0': s.x_min, 'shapes[0].x1': s.x_max, 'shapes[0].y0': zmin, 'shapes[0].y1': zmin,\n"
         "    'shapes[1].x0': s.x_min, 'shapes[1].x1': s.x_max, 'shapes[1].y0': zmax, 'shapes[1].y1': zmax,\n"
@@ -243,15 +243,15 @@ def create_2d_html(df: pd.DataFrame) -> None:
         "  zmaxInput.value = zmax.toFixed(3);\n"
         "  xminInput.value = xmin.toFixed(3);\n"
         "  xmaxInput.value = xmax.toFixed(3);\n"
-        "  // Μετρικά\n"
-        "  metricsInfo.textContent = 'Δz = ' + (zmax - zmin).toFixed(3) + ' m,  Δx = ' + (xmax - xmin).toFixed(3) + ' m';\n"
+        "  // Metrics\n"
+        "  metricsInfo.textContent = 'dz = ' + (zmax - zmin).toFixed(3) + ' m,  dx = ' + (xmax - xmin).toFixed(3) + ' m';\n"
         "}\n"
         "\n"
-        "// Αλλαγή τομής άμεσα (δουλεύει και με τα ↓/↑ του πληκτρολογίου)\n"
+        "// Change section immediately (also works with keyboard arrow keys)\n"
         "select.addEventListener('input', () => { loadSection(parseInt(select.value)); });\n"
         "select.addEventListener('change', () => { loadSection(parseInt(select.value)); });\n"
         "\n"
-        "// Apply: αποθηκεύει overrides ΜΟΝΟ για την τρέχουσα τομή και ξαναφορτώνει\n"
+        "// Apply: saves overrides only for the current section and reloads\n"
         "applyBtn.addEventListener('click', () => {\n"
         "  const idx = parseInt(select.value);\n"
         "  store[idx] = {\n"
@@ -263,7 +263,7 @@ def create_2d_html(df: pd.DataFrame) -> None:
         "  loadSection(idx);\n"
         "});\n"
         "\n"
-        "// Reset: διαγράφει overrides για την τρέχουσα τομή και επιστρέφει στα default\n"
+        "// Reset: clears overrides for the current section and restores defaults\n"
         "resetBtn.addEventListener('click', () => {\n"
         "  const idx = parseInt(select.value);\n"
         "  delete store[idx];\n"
