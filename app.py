@@ -348,6 +348,7 @@ async def run(
     clip_mode: str = Form("fixed"),  # "fixed" or "auto"
     half_width: float = Form(0.7),  # for fixed mode or fallback
     right_trim: float = Form(0.0),  # additional trimming from the right
+    left_trim: float = Form(0.0),   # additional trimming from the left
     slope_thr: float = Form(1.5),  # for auto edge detection
     depth_min: float = Form(0.0),  # criterion: minimum acceptable depth (m)
     autoaxis: str = Form("1"),
@@ -358,6 +359,7 @@ async def run(
         edgelock=edgelock,
         half_width=half_width,
         right_trim=right_trim,
+        left_trim=left_trim,
         slope_thr=slope_thr,
         depth_min=depth_min,
         clip_mode=clip_mode,
@@ -414,8 +416,8 @@ async def run(
     # FINAL CLIP: fixed or auto
     mode = (clip_mode or "fixed").strip().lower()
     if mode == "fixed":
-        df = df[df["dist_off"].between(-half_width, half_width - right_trim)].copy()
-        logs.append(f"[clip:fixed] half_width={half_width} right_trim={right_trim}")
+        df = df[df["dist_off"].between(-half_width + left_trim, half_width - right_trim)].copy()
+        logs.append(f"[clip:fixed] half_width={half_width} left_trim={left_trim} right_trim={right_trim}")
     else:
         out = []
         fail = 0

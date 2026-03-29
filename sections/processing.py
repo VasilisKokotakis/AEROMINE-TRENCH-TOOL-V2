@@ -11,6 +11,7 @@ def validate_params(
     edgelock: float,
     half_width: float,
     right_trim: float,
+    left_trim: float,
     slope_thr: float,
     depth_min: float,
     clip_mode: str,
@@ -27,6 +28,8 @@ def validate_params(
         errors.append("Half-width must be > 0")
     if right_trim < 0:
         errors.append("Right trim must be >= 0")
+    if left_trim < 0:
+        errors.append("Left trim must be >= 0")
     if slope_thr <= 0:
         errors.append("Slope threshold must be > 0")
     if depth_min < 0:

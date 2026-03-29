@@ -69,6 +69,12 @@
       </div>
 
       <div>
+        <label>Left trim (m):</label>
+        <input id="left_trim" type="number" step="0.01" value="0.00" />
+        <div class="hint">Additional trimming from the left side.</div>
+      </div>
+
+      <div>
         <label>Slope threshold (auto):</label>
         <input id="slope_thr" type="number" step="0.1" value="1.5" />
       </div>
@@ -114,6 +120,7 @@ document.getElementById("run").addEventListener("click", async () => {
   const clipMode = document.getElementById("clip_mode").value;
   const halfWidth = document.getElementById("half_width").value;
   const rightTrim = document.getElementById("right_trim").value;
+  const leftTrim = document.getElementById("left_trim").value;
   const slopeThr = document.getElementById("slope_thr").value;
   const depthMin = document.getElementById("depth_min").value;
 
@@ -130,6 +137,7 @@ document.getElementById("run").addEventListener("click", async () => {
   fd.append("clip_mode", clipMode);
   fd.append("half_width", halfWidth);
   fd.append("right_trim", rightTrim);
+  fd.append("left_trim", leftTrim);
   fd.append("slope_thr", slopeThr);
   fd.append("depth_min", depthMin);
 

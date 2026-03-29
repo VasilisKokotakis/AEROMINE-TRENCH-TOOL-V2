@@ -93,6 +93,7 @@ class AeromineApp(tk.Tk):
             ("Edge-lock (m):", "edgelock_var", 0.05),
             ("Half-width (m):", "halfwidth_var", 0.7),
             ("Right trim (m):", "righttrim_var", 0.0),
+            ("Left trim (m):", "lefttrim_var", 0.0),
             ("Slope threshold:", "slopethr_var", 1.5),
             ("Depth min (m):", "depthmin_var", 0.0),
         ]
@@ -158,6 +159,7 @@ class AeromineApp(tk.Tk):
         edgelock = self.vars["edgelock_var"].get()
         halfwidth = self.vars["halfwidth_var"].get()
         righttrim = self.vars["righttrim_var"].get()
+        lefttrim = self.vars["lefttrim_var"].get()
         slopethr = self.vars["slopethr_var"].get()
         depthmin = self.vars["depthmin_var"].get()
         autoaxis = self.autoaxis_var.get()
@@ -169,6 +171,7 @@ class AeromineApp(tk.Tk):
             edgelock=edgelock,
             half_width=halfwidth,
             right_trim=righttrim,
+            left_trim=lefttrim,
             slope_thr=slopethr,
             depth_min=depthmin,
             clip_mode=clipmode,
@@ -215,8 +218,8 @@ class AeromineApp(tk.Tk):
                 # Clip
                 self.after(0, self.status_var.set, "Clipping sections...")
                 if clipmode == "fixed":
-                    df = df[df["dist_off"].between(-halfwidth, halfwidth - righttrim)].copy()
-                    self.after(0, self.log, f"[clip:fixed] half_width={halfwidth} right_trim={righttrim}")
+                    df = df[df["dist_off"].between(-halfwidth + lefttrim, halfwidth - righttrim)].copy()
+                    self.after(0, self.log, f"[clip:fixed] half_width={halfwidth} left_trim={lefttrim} right_trim={righttrim}")
                 else:
                     from app import auto_edges_from_section
                     out = []

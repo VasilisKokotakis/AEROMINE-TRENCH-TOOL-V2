@@ -148,23 +148,23 @@ Cross-section View:
 
 ---
 
-### 5. Right Trim (m)
+### 5. Right Trim / Left Trim (m)
 **Default: 0.0 meters**
 
-**What it does:** Applies asymmetric clipping by reducing the width on the right side of the trench.
+**What they do:** Apply asymmetric clipping by reducing the analysis width on either side of the trench.
 
 **Example:**
-- If half-width = 0.7m and right-trim = 0.1m:
-  - Left side: -0.7m to 0m ✓ (full width)
+- If half-width = 0.7m, left-trim = 0.05m, right-trim = 0.1m:
+  - Left side: -0.65m to 0m ✓ (reduced by 0.05m)
   - Right side: 0m to +0.6m ✓ (reduced by 0.1m)
 
 **When to use:**
-- Your trench has one side that's damaged or has debris
-- One wall is not vertical or has collapsed
-- You want to exclude one side from the analysis
+- One side of the trench is damaged, has debris, or has collapsed
+- One wall is not vertical
+- You want to exclude either side from the analysis
 
-**Common scenario:** 
-After excavation, one side of the trench collapsed slightly. Set right-trim to 0.15m to ignore that problematic wall in the measurements.
+**Common scenario:**
+After excavation, the right side of the trench collapsed slightly. Set right-trim to 0.15m to ignore that problematic wall. If the left side also has issues, set left-trim accordingly.
 
 ---
 

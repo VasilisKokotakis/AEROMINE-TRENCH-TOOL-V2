@@ -14,6 +14,7 @@ def _valid_kwargs(**overrides):
         edgelock=0.05,
         half_width=0.7,
         right_trim=0.0,
+        left_trim=0.0,
         slope_thr=1.5,
         depth_min=0.0,
         clip_mode="fixed",
@@ -58,6 +59,11 @@ def test_validate_params_half_width_zero():
 def test_validate_params_right_trim_negative():
     errors = validate_params(**_valid_kwargs(right_trim=-1))
     assert any("Right trim" in e for e in errors)
+
+
+def test_validate_params_left_trim_negative():
+    errors = validate_params(**_valid_kwargs(left_trim=-1))
+    assert any("Left trim" in e for e in errors)
 
 
 def test_validate_params_slope_thr_zero():
